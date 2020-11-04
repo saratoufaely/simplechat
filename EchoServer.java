@@ -45,21 +45,69 @@ public class EchoServer extends AbstractServer
    * @param msg The message received from the client.
    * @param client The connection from which the message originated.
    */
-  public void handleMessageFromClient
-    (Object msg, ConnectionToClient client)
+  public void handleMessageFromClient(Object msg, ConnectionToClient client)
   {
-    System.out.println("Message received: " + msg + " from " + client);
-    this.sendToAllClients(msg);
+    String message = msg.toString();
+    if(message.startsWith("#login")){
+      System.out.println("Message received: " + msg + " from " + client.getInfo("loginID"));
+      this.sendToAllClients(msg);
+    } else {
+      System.out.println("Message received: " + msg + " from " + client.getInfo("loginId"));
+      this.sendToAllClients(client.getInfo("loginId") + "> " + msg);
+    }
+
+  }
+
+  public void handleMessageFromServerUI(String message){
+    if (!message.charAt(0)=='#'){
+      System.out.println(message);
+      sendToAllClients(message);
+    }
+    switch (message){
+      case("#getport"):
+        System.out.println(getPort());
+        break;
+      case ("#start"):
+        if(serverStarted==false){
+          try{
+            listen();
+          } catch(Exception e){
+            System.out.println("Could not start.");
+          }
+        }
+        break;
+      case ("#close"):
+        try{
+          sendToAllClients("server is closing");
+          System.out.println("Server is closing.");
+          close();
+        } catch(Exception e){
+          System.out.println("Unable to close.");
+        }
+        break;
+      case ("#stop"):
+        System.out.println("Server stopped listening to new clients.");
+        stopListening();
+        break;
+      case("#quit"):
+        System.out.println("Server is quitting.");
+        System.exit(0);
+        break;
+    }
+
   }
     
   /**
    * This method overrides the one in the superclass.  Called
    * when the server starts listening for connections.
    */
+  boolean serverStarted;
+
   protected void serverStarted()
   {
     System.out.println
       ("Server listening for connections on port " + getPort());
+    serverStarted = true;
   }
   
   /**
@@ -70,8 +118,26 @@ public class EchoServer extends AbstractServer
   {
     System.out.println
       ("Server has stopped listening for connections.");
+    serverStarted = false;
   }
-  
+
+  @Override
+  protected void clientConnected(ConnectionToClient client) {
+    System.out.println("User " + client.getId() + " has connected");
+  }
+
+  @Override
+  synchronized protected void clientDisconnected(ConnectionToClient client) {
+    System.out.println("User " + client.getInfo("loginID") + " has disconnected");
+    sendToAllClients("User " + client.getInfo("loginID") + " has disconnected");
+  }
+
+  @Override
+  synchronized protected void clientException(ConnectionToClient client, Throwable exception){
+    System.out.println(client.getInfo("loginId") + " has disconnected.");
+  }
+
+
   //Class methods ***************************************************
   
   /**
